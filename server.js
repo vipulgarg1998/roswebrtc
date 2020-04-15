@@ -2,6 +2,7 @@ const WebSocketServer = require('ws').Server,
   express = require('express'),
   https = require('https'),
   app = express(),
+	WebSocket = require('ws'),
   fs = require('fs');
 
 const pkey = fs.readFileSync('./ssl/key.pem'),
@@ -33,17 +34,21 @@ wss.on('connection', function (client) {
   console.log("A new WebSocket client was connected.");
   /** incomming message */
   client.on('message', function (message) {
-    /** broadcast message to all clients */
-    wss.broadcast(message, client);
+	  /** broadcast message to all clients */
+    wss.clients.forEach(function each(cl) {
+      if (cl.readyState === WebSocket.OPEN && cl !== client) {
+        cl.send(message);
+      }
+    });
   });
 });
 // broadcasting the message to all WebSocket clients.
 wss.broadcast = function (data, exclude) {
-  var i = 0, n = this.clients ? this.clients.length : 0, client = null;
+  var i = 0, n =  wss.clients.length, client = null;
   if (n < 1) return;
   console.log("Broadcasting message to all " + n + " WebSocket clients.");
   for (; i < n; i++) {
-    client = this.clients[i];
+    client = wss.clients[i];
     // don't send the message to the sender...
     if (client === exclude) continue;
     if (client.readyState === client.OPEN) client.send(data);
